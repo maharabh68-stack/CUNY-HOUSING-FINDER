@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b1220" />
+    <title>CUNY Housing Finder</title>
+
+    <link rel="preconnect" href="https://unpkg.com" />
+    <link rel="preconnect" href="https://tile.openstreetmap.org" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <header class="topbar">
+        <a class="brand" href="#" aria-label="CUNY Housing Finder home">
+            <span class="logo" aria-hidden="true">🏙️</span>
+            <span>
+                <strong>CUNY Housing Finder</strong>
+                <small>Student housing map for CUNY campuses</small>
+            </span>
+        </a>
+
+        <nav class="tabs" aria-label="Main navigation" role="tablist">
+            <button id="tabMap" class="tab active" type="button" role="tab" aria-selected="true">Map</button>
+            <button id="tabAdd" class="tab" type="button" role="tab" aria-selected="false">Add listing</button>
+            <button id="tabFind" class="tab" type="button" role="tab" aria-selected="false">Find listing</button>
+            <button id="tabList" class="tab" type="button" role="tab" aria-selected="false">Listings</button>
+        </nav>
+
+        <div class="mode-toggle" title="Choose where listings are stored">
+            <span id="modeLabel" class="mode-label">Cloud</span>
+            <label class="switch" aria-label="Use local storage only">
+                <input id="toggleLocal" type="checkbox" />
+                <span class="slider"></span>
+            </label>
+            <button id="btnClearLocal" class="btn btn-mini" type="button" title="Clear locally saved listings">Clear local</button>
+        </div>
+    </header>
+
+    <main>
+        <section id="sectionMap" class="page visible" aria-labelledby="mapTitle">
+            <div class="hero-card">
+                <div>
+                    <p class="eyebrow">Live demo</p>
+                    <h1 id="mapTitle">Find rooms near CUNY campuses faster.</h1>
+                    <p class="hero-text">Browse campus pins, student listings, and nearby rooms. Listings can save to Supabase or local storage for testing.</p>
+                </div>
+                <div class="stats" aria-label="Listing summary">
+                    <div><strong id="statTotal">0</strong><span>Total</span></div>
+                    <div><strong id="statHave">0</strong><span>Available</span></div>
+                    <div><strong id="statNeed">0</strong><span>Need room</span></div>
+                    <div><strong id="statCampus">0</strong><span>Campuses</span></div>
+                </div>
+            </div>
+
+            <div class="map-shell">
+                <div id="map" aria-label="Housing listings map"></div>
+            </div>
+
+            <div class="map-actions">
+                <div class="locate-group">
+                    <button id="btnLocateMe" class="btn btn-primary" type="button">Locate me</button>
+                    <div class="radius-chips" aria-label="Locate radius">
+                        <button class="chip" type="button" data-radius="1">1 km</button>
+                        <button class="chip chip-active" type="button" data-radius="3">3 km</button>
+                        <button class="chip" type="button" data-radius="5">5 km</button>
+                    </div>
+                </div>
+                <button id="btnResetView" class="btn" type="button">Reset view</button>
+                <button id="btnClearSearchPin" class="btn" type="button">Clear search pin</button>
+            </div>
+
+            <footer class="legend" aria-label="Map legend">
+                <span><i class="dot dot-need"></i> Needs room</span>
+                <span><i class="dot dot-have"></i> Room available</span>
+                <span><i class="dot dot-campus"></i> CUNY campus</span>
+            </footer>
+        </section>
+
+        <section id="sectionAdd" class="page" aria-labelledby="addTitle">
+            <div class="section-heading">
+                <p class="eyebrow">Post</p>
+                <h2 id="addTitle">Add a listing</h2>
+                <p>Use a clear title, contact info, and location so the listing works well on the map.</p>
+            </div>
+
+            <form class="form" id="listingForm" novalidate>
+                <div class="grid two">
+                    <label class="field">Type
+                        <select id="inputType">
+                            <option value="need">I need a room</option>
+                            <option value="have">Room available</option>
+                        </select>
+                    </label>
+
+                    <label class="field">Campus <span>(optional)</span>
+                        <div class="inline">
+                            <input id="inputCampus" type="text" placeholder="e.g., BMCC" autocomplete="off" />
+                            <button id="btnSnapCampus" class="btn btn-mini" type="button">Snap</button>
+                        </div>
+                    </label>
+                </div>
+
+                <label class="field">Title <span>(required)</span>
+                    <input id="inputTitle" type="text" maxlength="90" placeholder="Room near BMCC, $900/mo" />
+                </label>
+
+                <label class="field">Description
+                    <textarea id="inputDesc" rows="4" maxlength="350" placeholder="Short details: lease, roommates, move-in date, neighborhood, train access."></textarea>
+                </label>
+
+                <div class="grid two">
+                    <label class="field">Monthly price
+                        <input id="inputPrice" type="number" min="0" inputmode="numeric" placeholder="900" />
+                    </label>
+
+                    <label class="field">Contact <span>(required)</span>
+                        <input id="inputContact" type="text" maxlength="120" placeholder="email, phone, or IG handle" />
+                    </label>
+                </div>
+
+                <div class="grid three">
+                    <label class="field">Latitude
+                        <input id="inputLat" type="text" placeholder="Click map or search" />
+                    </label>
+
+                    <label class="field">Longitude
+                        <input id="inputLng" type="text" placeholder="Click map or search" />
+                    </label>
+
+                    <label class="field">Location search
+                        <div class="inline">
+                            <input id="inputSearch" type="text" placeholder="199 Chambers St, NYC" />
+                            <button id="btnSearch" class="btn" type="button">Search</button>
+                        </div>
+                    </label>
+                </div>
+
+                <p class="hint">Tip: click anywhere on the map to fill latitude and longitude, or type a campus and press Snap.</p>
+
+                <div class="form-actions">
+                    <button id="btnPost" class="btn btn-primary" type="submit">Post listing</button>
+                    <div id="postStatus" class="status" role="status" aria-live="polite"></div>
+                </div>
+            </form>
+        </section>
+
+        <section id="sectionFind" class="page" aria-labelledby="findTitle">
+            <div class="section-heading">
+                <p class="eyebrow">Search</p>
+                <h2 id="findTitle">Find a listing</h2>
+                <p>Filter by keyword, type, campus, price, or only the listings you posted.</p>
+            </div>
+
+            <div class="form">
+                <label class="field">Keyword
+                    <input id="filterKeyword" type="text" placeholder="BMCC, Queens, studio, Brooklyn" />
+                </label>
+
+                <div class="grid two">
+                    <label class="field">Type
+                        <select id="filterType">
+                            <option value="">All types</option>
+                            <option value="need">Needs room</option>
+                            <option value="have">Room available</option>
+                        </select>
+                    </label>
+
+                    <label class="field">Campus
+                        <select id="filterCampus">
+                            <option value="">Loading campuses…</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="grid two">
+                    <label class="field">Minimum price
+                        <input id="filterMin" type="number" min="0" inputmode="numeric" placeholder="Min $" />
+                    </label>
+
+                    <label class="field">Maximum price
+                        <input id="filterMax" type="number" min="0" inputmode="numeric" placeholder="Max $" />
+                    </label>
+                </div>
+
+                <label class="checkline">
+                    <input id="filterMine" type="checkbox" />
+                    My listings only
+                </label>
+
+                <div class="form-actions">
+                    <button id="btnApplyFilters" class="btn btn-primary" type="button">Apply filters</button>
+                    <button id="btnClearFilters" class="btn" type="button">Clear</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="sectionList" class="page" aria-labelledby="listTitle">
+            <div class="list-header">
+                <div>
+                    <p class="eyebrow">Browse</p>
+                    <h2 id="listTitle">Recent listings</h2>
+                    <p id="listCount" class="muted">0 listings shown</p>
+                </div>
+                <div class="list-toolbar">
+                    <select id="sortListings" aria-label="Sort listings">
+                        <option value="newest">Newest first</option>
+                        <option value="price_low">Price: low to high</option>
+                        <option value="price_high">Price: high to low</option>
+                    </select>
+                    <button id="btnMyListings" class="btn btn-mini" type="button" title="Show only the listings you posted">My listings</button>
+                </div>
+            </div>
+            <div id="listingsContainer" class="listings"></div>
+        </section>
+    </main>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
